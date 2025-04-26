@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Xtreme Aviator Predictor</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 20px;
+      margin-top: 50px;
+    }
+    .header-box {
+      background-color: #ff0000;
+      border: 2px solid white;
+      border-radius: 15px;
+      padding: 20px 30px;
+      margin: 0 auto 15px auto;
+      max-width: 400px;
+      box-shadow: 0 0 10px #ff0000, 0 0 20px #ff0000, 0 0 30px #ff0000;
+    }
+    .header-title {
+      font-size: 1.6em;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .info-datetime {
+      margin-top: 20px;
+      border: 2px solid white;
+      padding: 10px 18px;
+      border-radius: 10px;
+      display: inline-block;
+      font-size: 1.3em;
+      font-weight: 500;
+      margin: 10px auto;
+      line-height: 1.6;
+    }
+    .prediction-box {
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      border: 4px solid #00ffe7;
+      background: #111;
+      margin: 20px auto;
+      box-shadow: 0 0 15px #00ffe7, inset 0 0 20px #00ffe7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6em;
+      color: #00ffe7;
+    }
+    .odd-box {
+      margin-top: 0;
+      min-width: 220px;
+      padding: 16px 30px;
+      border-radius: 10px;
+      font-size: 1.3em;
+      color: #00ffe7;
+      background-color: #111;
+      border: 2px solid white;
+      box-shadow: 0 0 10px #00ffe7;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    footer {
+      margin-top: 30px;
+      font-size: .9em;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-box">
+    <div class="header-title">XTREME AVIATOR PREDICTOR 2 ODD : 1XBET</div>
+  </div>
+
+  <div class="info-datetime">
+    <div>Live Time: <span id="liveTime">--:--:-- --</span></div>
+    <div>Date: <span id="liveDate">----</span></div>
+  </div>
+
+  <div class="prediction-box" id="signalTime">--:--:--</div>
+  <div class="odd-box" id="oddValue">ODD - --×</div>
+
+  <footer>POWERED BY XTREME PREDICTOR © 2025</footer>
+
+  <script>
+    let signals = [];
+    let currentIndex = 0;
+    let currentSignalStart = null;
+    let isLoading = false;
+    let loadingInterval = null;
+    let loadingDots = 0;
+    let hasShownCurrentSignal = false;
+
+    async function fetchSignals() {
+      try {
+        const res = await fetch('signals.json');
+        signals = await res.json();
+      } catch (err) {
+        console.error("Failed to load signals:", err);
+      }
+    }
+
+    function updateLiveClock() {
+      const now = new Date();
+      const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+
+      document.getElementById("liveTime").textContent = now.toLocaleTimeString('en-US', optionsTime);
+      document.getElementById("liveDate").textContent = now.toLocaleDateString('en-US', optionsDate);
+      requestAnimationFrame(updateLiveClock);
+    }
+
+    function showSignal(signal) {
+      const box = document.getElementById("signalTime");
+      const odd = document.getElementById("oddValue");
+
+      box.textContent = signal.time;
+      box.style.color = "#9933ff";
+      box.style.borderColor = "#9933ff";
+      box.style.boxShadow = "0 0 15px #9933ff, inset 0 0 20px #9933ff";
+      box.style.backgroundColor = "#111";
+      odd.textContent = `ODD - ${parseFloat(signal.odd).toFixed(2)}×`;
+    }
+
+    function showChartComplete() {
+      const box = document.getElementById("signalTime");
+      const odd = document.getElementById("oddValue");
+
+      box.textContent = "Chart Complete";
+      box.style.color = "#00ff00";
+      box.style.borderColor = "#00ff00";
+      box.style.boxShadow = "0 0 15px #00ff00, inset 0 0 20px #00ff00";
+      box.style.backgroundColor = "#001f00";
+      odd.textContent = "ODD - --×";
+    }
+
+    function showLoadingAnimation() {
+      const box = document.getElementById("signalTime");
+      const odd = document.getElementById("oddValue");
+
+      box.style.color = "#fff";
+      box.style.borderColor = "#fff";
+      box.style.backgroundColor = "#111";
+      box.style.boxShadow = "0 0 10px #fff, inset 0 0 10px #fff";
+      odd.textContent = "...";
+      box.textContent = "Next Signal loading";
+
+      loadingDots = 0;
+      loadingInterval = setInterval(() => {
+        loadingDots = (loadingDots + 1) % 4;
+        box.textContent = "Next Signal loading" + ".".repeat(loadingDots);
+      }, 500);
+    }
+
+    function stopLoadingAnimation() {
+      clearInterval(loadingInterval);
+    }
+
+    function updateSignalDisplay() {
+      const now = new Date();
+
+      if (currentIndex >= signals.length) {
+        showChartComplete();
+        return;
+      }
+
+      const signal = signals[currentIndex];
+      const signalTime = new Date(`${signal.date}T${signal.time}`);
+
+      // Show signal as soon as it loads
+      if (!hasShownCurrentSignal) {
+        showSignal(signal);
+        hasShownCurrentSignal = true;
+      }
+
+      // After 60s of signalTime, go to loading
+      if (!isLoading && now > signalTime.getTime() + 60000) {
+        isLoading = true;
+        showLoadingAnimation();
+
+        setTimeout(() => {
+          stopLoadingAnimation();
+          currentIndex++;
+          hasShownCurrentSignal = false;
+          isLoading = false;
+          updateSignalDisplay();
+        }, 6000);
+      }
+    }
+
+    window.addEventListener("load", async () => {
+      await fetchSignals();
+      updateLiveClock();
+      setInterval(updateSignalDisplay, 1000);
+    });
+  </script>
+</body>
+</html>
